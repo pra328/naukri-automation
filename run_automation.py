@@ -62,17 +62,16 @@ def main():
     print("\n✅ Environment check passed!")
     
     # Check if resume file exists
-    resume_path = "/Users/mac/Documents/Job Material/Prakhar_PM_resume.pdf"
+    resume_path = os.getenv("RESUME_FILE_PATH", "./resume.pdf")
     if not os.path.exists(resume_path):
         print(f"⚠️ Resume file not found at: {resume_path}")
-        print("💡 Please update the resume path in main.py")
+        print("💡 Upload resume.pdf to the repository root or set RESUME_FILE_PATH in .env")
         
         # Ask for alternative path
         alt_path = input("📄 Enter path to your resume file (or press Enter to skip): ").strip()
         if alt_path and os.path.exists(alt_path):
             print(f"✅ Using resume: {alt_path}")
-            # Update the path in main.py temporarily
-            update_resume_path(alt_path)
+            os.environ["RESUME_FILE_PATH"] = alt_path
         else:
             print("⚠️ Continuing without resume upload...")
     

@@ -45,6 +45,9 @@ jobs:
           [ -n "${{ secrets.NAUKRI_PASSWORD }}" ] && echo "NAUKRI_PASSWORD=${{ secrets.NAUKRI_PASSWORD }}"
           [ -n "${{ secrets.GOOGLE_EMAIL }}" ] && echo "GOOGLE_EMAIL=${{ secrets.GOOGLE_EMAIL }}"
           [ -n "${{ secrets.PHONE_NUMBER }}" ] && echo "PHONE_NUMBER=${{ secrets.PHONE_NUMBER }}"
+          if [ -f "resume.pdf" ]; then
+            echo "RESUME_FILE_PATH=./resume.pdf"
+          fi
         } > .env
         echo "✅ Environment file created"
         echo "🔍 LOGIN_METHOD is set to: ${{ secrets.LOGIN_METHOD }}"
@@ -56,17 +59,10 @@ jobs:
           echo "✅ Found resume.pdf in repository"
           cp resume.pdf ./resume.pdf
         else
-          echo "⚠️ Warning: resume.pdf not found in repository root"
+          echo "❌ resume.pdf not found in repository root"
           echo "💡 Please upload your resume as resume.pdf in the repository root"
+          exit 1
         fi
-        
-    - name: Update resume path in main.py
-      run: |
-        # Update the resume path to point to the downloaded file
-        # Handle both potential paths
-        sed -i 's|RESUME_FILE_PATH = "/Users/mac/Documents/Job Material/Prakhar_PM_resume.pdf"|RESUME_FILE_PATH = "./resume.pdf"|' main.py
-        sed -i 's|RESUME_FILE_PATH = "/Users/mac/Documents/Job Material/PrakharBhatnagar_Resume.pdf"|RESUME_FILE_PATH = "./resume.pdf"|' main.py
-        echo "✅ Resume path updated in main.py"
         
     - name: Run Naukri automation
       run: |

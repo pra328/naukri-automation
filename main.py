@@ -37,7 +37,12 @@ if __name__ == "__main__":
         exit(1)
 
     # Define resume file path
-    RESUME_FILE_PATH = "/Users/mac/Documents/Job Material/Prakhar_PM_resume.pdf"
+    RESUME_FILE_PATH = os.getenv("RESUME_FILE_PATH", "./resume.pdf")
+
+    if not os.path.exists(RESUME_FILE_PATH):
+        print(f"❌ Error: Resume file not found at: {RESUME_FILE_PATH}")
+        print("💡 Upload resume.pdf to the repository root or set RESUME_FILE_PATH in .env")
+        exit(1)
 
     # Check if required environment variables are loaded
     if LOGIN_METHOD == "google" and not EMAIL:
