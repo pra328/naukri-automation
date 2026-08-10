@@ -47,6 +47,6 @@ chromedriver
 chromedriver.exe
 
 # Resume files (keep private)
-!resume.pdf
 *.pdf
+!resume.pdf
 resume/
