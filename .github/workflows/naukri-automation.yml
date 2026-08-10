@@ -52,12 +52,10 @@ jobs:
         echo "✅ Environment file created"
         echo "🔍 LOGIN_METHOD is set to: ${{ secrets.LOGIN_METHOD }}"
         
-    - name: Copy resume file
+    - name: Verify resume file
       run: |
-        # Copy resume from repository root (should be named resume.pdf)
         if [ -f "resume.pdf" ]; then
           echo "✅ Found resume.pdf in repository"
-          cp resume.pdf ./resume.pdf
         else
           echo "❌ resume.pdf not found in repository root"
           echo "💡 Please upload your resume as resume.pdf in the repository root"
