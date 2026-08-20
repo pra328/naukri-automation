@@ -23,7 +23,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget gnupg unzip
+        sudo apt-get install -y wget gnupg unzip xvfb
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
         sudo apt-get update
@@ -64,7 +64,7 @@ jobs:
         
     - name: Run Naukri automation
       run: |
-        python main.py
+        xvfb-run -a python main.py
         
     - name: Upload logs
       uses: actions/upload-artifact@v4

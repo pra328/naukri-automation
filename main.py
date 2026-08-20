@@ -36,13 +36,16 @@ if __name__ == "__main__":
         print("✅ Supported methods: google, email_password, otp")
         exit(1)
 
-    # Define resume file path
-    RESUME_FILE_PATH = os.getenv("RESUME_FILE_PATH", "./resume.pdf")
+    # Use the actual resume filename to keep the upload target clear and consistent.
+    default_resume_name = "PRAVALLIKA_YELLA_21072026.pdf"
+    RESUME_FILE_PATH = os.path.abspath(os.path.expanduser(os.getenv("RESUME_FILE_PATH", os.path.join(".", default_resume_name))))
 
     if not os.path.exists(RESUME_FILE_PATH):
         print(f"❌ Error: Resume file not found at: {RESUME_FILE_PATH}")
-        print("💡 Upload resume.pdf to the repository root or set RESUME_FILE_PATH in .env")
+        print(f"💡 Place {default_resume_name} in the repository root or set RESUME_FILE_PATH in .env")
         exit(1)
+
+    print(f"📄 Using resume file: {RESUME_FILE_PATH}")
 
     # Check if required environment variables are loaded
     if LOGIN_METHOD == "google" and not EMAIL:

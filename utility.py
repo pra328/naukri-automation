@@ -9,6 +9,27 @@ import time
 import os
 from datetime import datetime
 
+try:
+    import undetected_chromedriver as uc
+except Exception:
+    uc = None
+
+
+def _find_chrome_binary() -> str | None:
+    """Return the installed Chrome/Chromium binary path, if present."""
+    candidates = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
 
 def switch_to_new_window(driver: WebDriver, timeout: int = 10) -> None:
     """
@@ -57,14 +78,12 @@ def setup_driver() -> WebDriver:
         chrome_options.add_argument("--disable-extensions")
         
         # Advanced stealth Chrome options to avoid detection
-        # Enable headless mode ONLY in CI environments (required for GitHub Actions)
+        # GitHub Actions should use a virtual display instead of headless mode to reduce anti-bot detection.
         if is_ci:
-            print("🤖 Detected CI environment - enabling headless mode")
-            chrome_options.add_argument("--headless=new")
-            # Additional headless-specific options for CI
+            print("🤖 Detected CI environment - using virtual display mode")
             chrome_options.add_argument("--disable-software-rasterizer")
             chrome_options.add_argument("--disable-setuid-sandbox")
-            chrome_options.add_argument("--remote-debugging-port=0")  # Disable remote debugging in headless
+            chrome_options.add_argument("--remote-debugging-port=0")
         else:
             print("💻 Running in local environment - using normal Chrome mode")
         
@@ -129,9 +148,13 @@ def setup_driver() -> WebDriver:
         chrome_options.add_argument("--metrics-recording-only")
         chrome_options.add_argument("--no-first-run")
         chrome_options.add_argument("--safebrowsing-disable-auto-update")
-        chrome_options.add_argument("--enable-automation")
         chrome_options.add_argument("--password-store=basic")
         chrome_options.add_argument("--use-mock-keychain")
+
+        chrome_binary = _find_chrome_binary()
+        if chrome_binary:
+            chrome_options.binary_location = chrome_binary
+            print(f"📍 Using Chrome binary: {chrome_binary}")
         
         # Randomize user agent from a pool of real browsers
         import random
@@ -164,21 +187,6 @@ def setup_driver() -> WebDriver:
         chrome_options.add_argument("--sec-fetch-user=?1")
         chrome_options.add_argument("--upgrade-insecure-requests=1")
         
-        # In CI environments, explicitly set Chrome binary path if available
-        if is_ci:
-            # Try common Chrome installation paths in CI
-            chrome_binary_paths = [
-                "/usr/bin/google-chrome",
-                "/usr/bin/google-chrome-stable",
-                "/usr/bin/chromium",
-                "/usr/bin/chromium-browser"
-            ]
-            for chrome_path in chrome_binary_paths:
-                if os.path.exists(chrome_path):
-                    chrome_options.binary_location = chrome_path
-                    print(f"📍 Using Chrome binary: {chrome_path}")
-                    break
-        
         print("🌐 Using cloud-optimized Chrome configuration")
         
         # Start Chrome with robust error handling
@@ -189,11 +197,15 @@ def setup_driver() -> WebDriver:
             try:
                 print(f"🔍 Attempting to start Chrome (attempt {attempt + 1}/{max_retries})...")
                 
-                # Create service with better configuration
-                service = Service(ChromeDriverManager().install())
-                
-                # Create driver with explicit service (don't start service manually)
-                driver = webdriver.Chrome(service=service, options=chrome_options)
+                if is_ci and uc is not None:
+                    print("🔐 Using undetected-chromedriver in CI environment")
+                    driver = uc.Chrome(options=chrome_options)
+                else:
+                    # Create service with better configuration
+                    service = Service(ChromeDriverManager().install())
+                    
+                    # Create driver with explicit service (don't start service manually)
+                    driver = webdriver.Chrome(service=service, options=chrome_options)
                 
                 # Set timeouts for better stability
                 driver.set_page_load_timeout(30)
@@ -1268,17 +1280,64 @@ def refresh_profile(driver: WebDriver, resume_file_path: str) -> None:
         driver: The webdriver instance.
         resume_file_path: The path to the resume file.
     """
-    wait = WebDriverWait(driver, 15)
+    wait = WebDriverWait(driver, 20)
     try:
-        upload_input = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//input[@type='file']"))
-        )
-        upload_input.send_keys(resume_file_path)
-        print("📎 Resume re-uploaded.")
+        resolved_path = os.path.abspath(os.path.expanduser(resume_file_path))
+        if not os.path.exists(resolved_path):
+            raise FileNotFoundError(f"Resume file does not exist: {resolved_path}")
+
+        profile_url = "https://www.naukri.com/mnjuser/profile"
+        if "mnjuser/profile" not in driver.current_url.lower():
+            print("🔍 Navigating to Naukri profile page before resume upload...")
+            driver.get(profile_url)
+            time.sleep(3)
+
+        wait.until(lambda d: "naukri.com" in d.current_url.lower())
+
+        # Try the real upload form on the profile page and a few likely resume buttons.
+        upload_input = None
+        upload_selectors = [
+            "//input[@type='file']",
+            "//input[contains(@accept, 'pdf') or contains(@accept, 'doc') or contains(@accept, 'resume')]",
+            "//button[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'upload resume')]",
+            "//span[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'upload resume')]",
+            "//a[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'upload resume')]",
+            "//button[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'edit profile')]",
+            "//span[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'edit profile')]",
+        ]
+
+        for selector in upload_selectors:
+            try:
+                element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                print(f"✅ Found resume/profile element with selector: {selector}")
+                if element.tag_name.lower() == "input":
+                    upload_input = element
+                    break
+                if element.is_displayed():
+                    try:
+                        element.click()
+                        time.sleep(2)
+                    except Exception:
+                        pass
+                    upload_input = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='file']")))
+                    break
+            except Exception:
+                continue
+
+        if upload_input is None:
+            raise Exception("No resume upload input found on the authenticated Naukri profile page")
+
+        upload_input.send_keys(resolved_path)
+        print(f"📎 Resume re-uploaded from: {resolved_path}")
         time.sleep(5)
         print(f"✅ Profile refreshed successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     except Exception as e:
         print("⚠️ Could not refresh profile:", e)
+        print(f"📍 Current URL at failure: {driver.current_url}")
+        try:
+            print(f"📄 Page title at failure: {driver.title}")
+        except Exception:
+            pass
 
 def cleanup(driver: WebDriver) -> None:
     """

@@ -62,10 +62,11 @@ def main():
     print("\n✅ Environment check passed!")
     
     # Check if resume file exists
-    resume_path = os.getenv("RESUME_FILE_PATH", "./resume.pdf")
+    default_resume_name = "PRAVALLIKA_YELLA_21072026.pdf"
+    resume_path = os.getenv("RESUME_FILE_PATH", os.path.join(".", default_resume_name))
     if not os.path.exists(resume_path):
         print(f"⚠️ Resume file not found at: {resume_path}")
-        print("💡 Upload resume.pdf to the repository root or set RESUME_FILE_PATH in .env")
+        print(f"💡 Place {default_resume_name} in the repository root or set RESUME_FILE_PATH in .env")
         
         # Ask for alternative path
         alt_path = input("📄 Enter path to your resume file (or press Enter to skip): ").strip()
