@@ -91,8 +91,18 @@ def setup_driver() -> WebDriver:
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
+
+        # Some Selenium/Chrome versions reject the experimental options below
+        # when running under undetected-chromedriver in GitHub Actions.
+        # Keep them only for local runs and use the standard argument-based
+        # automation masking instead for CI.
+        if not is_ci:
+            try:
+                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                chrome_options.add_experimental_option("useAutomationExtension", False)
+            except Exception:
+                pass
+
         chrome_options.add_argument("--disable-plugins")
         chrome_options.add_argument("--disable-web-security")
         chrome_options.add_argument("--allow-running-insecure-content")
