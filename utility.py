@@ -9,6 +9,10 @@ import time
 import os
 from datetime import datetime
 
+class ManualVerificationRequired(RuntimeError):
+    """Raised when a visible sign-in challenge needs user interaction."""
+
+
 try:
     import undetected_chromedriver as uc
 except Exception:
@@ -1039,64 +1043,24 @@ def login_with_email_password(driver: WebDriver, email: str, password: str) -> N
             for selector in captcha_selectors:
                 try:
                     elements = driver.find_elements(By.XPATH, selector)
-                    if elements:
+                    if any(element.is_displayed() for element in elements):
                         print(f"⚠️ CAPTCHA/Verification detected with selector: {selector}")
                         captcha_found = True
                         break
-                except:
+                except Exception:
                     continue
             
             if captcha_found:
-                print("🚫 CAPTCHA detected - this requires manual intervention")
-                print("💡 Possible solutions:")
-                print("   1. Use a different login method (Google OAuth)")
-                print("   2. Try logging in manually first to establish session")
-                print("   3. Use a residential proxy or VPN")
-                print("   4. Wait and retry later (CAPTCHA may be temporary)")
-                
-                # Try to suggest switching to Google OAuth
-                print("🔄 Attempting to switch to Google OAuth login...")
-                try:
-                    # Look for Google login button
-                    google_login_selectors = [
-                        "//button[contains(text(), 'Google')]",
-                        "//a[contains(text(), 'Google')]",
-                        "//div[contains(@class, 'google')]",
-                        "//button[contains(@class, 'google')]",
-                        "//a[contains(@href, 'google')]"
-                    ]
-                    
-                    google_button_found = False
-                    for selector in google_login_selectors:
-                        try:
-                            google_button = driver.find_element(By.XPATH, selector)
-                            print(f"✅ Found Google login button: {selector}")
-                            google_button.click()
-                            print("🔄 Clicked Google login button")
-                            time.sleep(3)
-                            google_button_found = True
-                            break
-                        except:
-                            continue
-                    
-                    if google_button_found:
-                        print("🎯 Switched to Google OAuth - this may bypass CAPTCHA")
-                        # Let the Google login function handle the rest
-                        return
-                    else:
-                        print("❌ No Google login option found")
-                        
-                except Exception as google_error:
-                    print(f"⚠️ Failed to switch to Google OAuth: {google_error}")
-                
-                # Raise a specific CAPTCHA exception that can be caught by the main login function
-                raise Exception("CAPTCHA detected - manual intervention required")
+                raise ManualVerificationRequired(
+                    "A visible verification challenge requires sign-in in a normal browser."
+                )
             else:
-                print("✅ No CAPTCHA detected")
+                print("✅ No visible verification challenge detected")
                 
+        except ManualVerificationRequired:
+            raise
         except Exception as captcha_error:
-            print(f"⚠️ Could not check for CAPTCHA: {captcha_error}")
-            pass
+            print(f"⚠️ Could not inspect verification state: {captcha_error}")
         
         if error_found:
             print("❌ Login failed - please check credentials and try again")
@@ -1267,6 +1231,9 @@ def login(driver: WebDriver, login_method: str, **kwargs) -> None:
             return
             
         except Exception as e:
+            if isinstance(e, ManualVerificationRequired):
+                print(f"⏸️ Login stopped for manual verification: {e}")
+                raise
             error_msg = str(e).lower()
             if "captcha" in error_msg or "verification" in error_msg:
                 print(f"⚠️ Login attempt {attempt + 1} failed due to CAPTCHA: {e}")
