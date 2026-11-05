@@ -17,6 +17,10 @@ except Exception:
 
 def _find_chrome_binary() -> str | None:
     """Return the installed Chrome/Chromium binary path, if present."""
+    configured_path = os.environ.get("CHROME_BIN")
+    if configured_path and os.path.isfile(configured_path):
+        return configured_path
+
     candidates = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -515,7 +519,7 @@ def setup_driver() -> WebDriver:
             except Exception as nav_error:
                 print(f"❌ Direct navigation failed: {nav_error}")
                 print("🔍 Current page source preview:")
-                print(driver.page_source[:500] + "...")
+                print("Page source preview suppressed")
                 raise Exception("Login button not found and direct navigation failed")
         else:
             # Click the login button
@@ -574,7 +578,7 @@ def login_with_google(driver: WebDriver, email: str) -> None:
                     # Try to find account with matching email
                     target_account = driver.find_element(By.XPATH, f"//div[contains(text(), '{email}')]")
                     target_account.click()
-                    print(f"✅ Selected account: {email}")
+                    print("✅ Selected Google account")
                 except:
                     # If specific email not found, click the first available account
                     first_account = driver.find_element(By.XPATH, "//div[contains(@class, 'account') or contains(@class, 'profile')]")
@@ -618,7 +622,7 @@ def login_with_google(driver: WebDriver, email: str) -> None:
         email_input = driver.find_element(By.XPATH, "//input[@type='email']")
         email_input.clear()
         email_input.send_keys(email)
-        print(f"📧 Entered email: {email}")
+        print("📧 Entered Google account email")
         
         # Click Next button
         next_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Next') or contains(text(), 'next')]")
@@ -781,7 +785,7 @@ def login_with_email_password(driver: WebDriver, email: str, password: str) -> N
             email_input.send_keys(char)
             time.sleep(random.uniform(0.05, 0.2))  # Random typing speed
         
-        print(f"📧 Entered email: {email}")
+        print("📧 Entered account email")
         
         # Simulate human pause between fields
         time.sleep(random.uniform(1, 3))
@@ -903,7 +907,7 @@ def login_with_email_password(driver: WebDriver, email: str, password: str) -> N
             if session_cookies:
                 print(f"✅ Found {len(session_cookies)} session cookies")
                 for cookie in session_cookies:
-                    print(f"   - {cookie['name']}: {cookie['value'][:20]}...")
+                    print(f"   - {cookie['name']}: value redacted")
             else:
                 print("⚠️ No session cookies found - authentication may not be complete")
                 
@@ -1099,7 +1103,7 @@ def login_with_email_password(driver: WebDriver, email: str, password: str) -> N
             print("🔍 Debug: Current page source preview:")
             try:
                 page_source = driver.page_source
-                print(page_source[:1000] + "..." if len(page_source) > 1000 else page_source)
+                print("Page source preview suppressed")
             except:
                 print("Could not retrieve page source")
             raise Exception("Login failed - invalid credentials or additional verification required")

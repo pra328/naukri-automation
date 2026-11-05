@@ -1,10 +1,9 @@
 name: Naukri Profile Automation
 
-# Run daily at 8:00 AM IST (2:30 AM UTC)
-# SCHEDULE DISABLED - Uncomment the schedule section below to re-enable automatic runs
+# Run daily at 6:00 AM IST (12:30 AM UTC)
 on:
-  # schedule:
-  #   - cron: '30 2 * * *'  # 8:00 AM IST = 2:30 AM UTC
+  schedule:
+    - cron: '30 0 * * *'  # 6:00 AM IST = 12:30 AM UTC
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -23,13 +22,14 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget gnupg unzip xvfb
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        # Verify Chrome installation
-        google-chrome --version
+        sudo apt-get install -y xvfb
+
+    - name: Set up Chrome
+      uses: browser-actions/setup-chrome@v2
+      id: setup-chrome
+      with:
+        chrome-version: stable
+        install-dependencies: true
         
     - name: Install Python dependencies
       run: |
@@ -63,8 +63,14 @@ jobs:
         fi
         
     - name: Run Naukri automation
+      timeout-minutes: 15
+      env:
+        CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
       run: |
-        xvfb-run -a python main.py
+        "$CHROME_BIN" --version
+        mkdir -p logs
+        set -o pipefail
+        xvfb-run -a python -u main.py 2>&1 | tee "logs/naukri-${GITHUB_RUN_ID}.log"
         
     - name: Upload logs
       uses: actions/upload-artifact@v4
