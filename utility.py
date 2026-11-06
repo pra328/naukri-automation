@@ -839,7 +839,7 @@ def login_with_email_password(driver: WebDriver, email: str, password: str) -> N
         
         # Wait for login to process with dynamic waiting
         print("⏱️ Waiting for login to complete...")
-        max_wait_time = 30  # Maximum wait time in seconds
+        max_wait_time = 10  # Maximum wait time in seconds
         wait_interval = 2   # Check every 2 seconds
         
         for wait_attempt in range(max_wait_time // wait_interval):
